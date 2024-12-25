@@ -30,4 +30,5 @@ export const getData = async (req: Request, res: Response) => {
       console.error(error);
       res.status(500).json({ message: 'Failed to fetch data' });
     }
-  };
+};
+  
