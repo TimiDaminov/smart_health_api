@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import db from '../models/db';
 
 interface TokenPayload {
-    id: number;
+    userId: number;
     role: string;
     iat: number;
     exp: number;
@@ -21,13 +21,14 @@ export const authenticate = async (req:any, res:any, next: any) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
 
-        const user = await db.query('SELECT id, role_id FROM users WHERE id = $1', [decoded.id]);
-
+        const user = await db.query('SELECT * FROM users WHERE id = $1', [decoded.userId]);
+        console.log('No user found for userId:', decoded);
         if (!user.rows.length) {
-            return res.status(401).json({ message: 'Invalid token' });
+            console.log("USER:",user)
+            console.log('No user found for userId:', decoded);
         }
 
-        req.user = { id: decoded.id, role: decoded.role }; // Добавляем user в запрос
+        req.user = { id: decoded.userId, role: decoded.role }; 
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Invalid or expired token' });
