@@ -31,23 +31,19 @@ export const registerUser = async (req:any,res:any) => {
             role = 'doctor';
         }
 
-        // Получаем ID роли из базы
         const roleData = await db.query('SELECT id FROM roles WHERE name = $1', [role]);
         if (!roleData.rows.length) {
             return res.status(400).json({ message: 'Invalid role' });
         }
         const roleId = roleData.rows[0].id;
 
-        // Хешируем пароль
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Добавляем пользователя в базу данных
         const user = await db.query(
             'INSERT INTO users (email, password, role_id, first_name, last_name) VALUES ($1, $2, $3, $4, $5) RETURNING id',
             [email, hashedPassword, roleId, first_name, last_name]
         );
 
-        // Создаем JWT токен
         const payload = {
             userId: user.rows[0].id,
             role: role,
