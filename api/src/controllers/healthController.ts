@@ -6,7 +6,7 @@ export const getHealthMetrics = async (req:any, res: any) => {
         const userId = req.user.id;
 
         const healthMetrics = await db.query(
-            'SELECT * FROM health_metrics WHERE user_id = $1 ORDER BY timestamp DESC',
+            'SELECT * FROM health_metrics WHERE user_id = $1 ORDER BY date DESC',
             [userId]
         );
 

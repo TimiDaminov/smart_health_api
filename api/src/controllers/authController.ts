@@ -10,46 +10,59 @@ interface RegisterRequestBody {
     first_name: string;
     last_name: string;
     client_type: 'patient' | 'doctor'; 
+    specialty?: string; 
+    licenseNumber?: string;
+    hospital?: string; 
 }
-
 interface LoginRequestBody {
     email: string;
     password: string;
 }
 
-export const registerUser = async (req:any,res:any) => {  
+export const registerUser = async (req:any, res:any) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, first_name, last_name, client_type } = req.body;
+    const { email, password, first_name, last_name, client_type, specialty, licenseNumber, hospital } = req.body;
 
     try {
+        // Определяем роль
         let role = 'patient'; 
         if (client_type === 'doctor') {
             role = 'doctor';
         }
 
+        // Получаем id роли из таблицы roles
         const roleData = await db.query('SELECT id FROM roles WHERE name = $1', [role]);
         if (!roleData.rows.length) {
             return res.status(400).json({ message: 'Invalid role' });
         }
         const roleId = roleData.rows[0].id;
 
+        // Хешируем пароль
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // Создаем пользователя
         const user = await db.query(
             'INSERT INTO users (email, password, role_id, first_name, last_name) VALUES ($1, $2, $3, $4, $5) RETURNING id',
             [email, hashedPassword, roleId, first_name, last_name]
         );
 
-        const payload = {
-            userId: user.rows[0].id,
-            role: role,
-        };
+        // Если это врач, добавляем его дополнительные данные
+        if (role === 'doctor') {
+            await db.query(
+                'INSERT INTO doctors (user_id, specialty, license_number, hospital) VALUES ($1, $2, $3, $4)',
+                [user.rows[0].id, specialty, licenseNumber, hospital]
+            );
+        }
 
+        // Генерируем JWT-токен
+        const payload = { userId: user.rows[0].id, role: role };
         const token = jwt.sign(payload, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1h' });
+
+        // Ответ на запрос
         res.status(201).json({ message: 'User registered successfully', userId: user.rows[0].id, token });
     } catch (error) {
         console.error(error);
